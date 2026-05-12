@@ -84,6 +84,7 @@
     width: 44px; height: 44px; border-radius: 50%; background: #fff;
     border: none; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(193,53,132,0.25); transition: transform .2s, box-shadow .2s;
+    color: #ff5285;
   }
   .profile-icon-btn:hover { transform: translateY(-50%) scale(1.08); box-shadow: 0 6px 16px rgba(193,53,132,0.35); }
   .profile-icon-btn:active { transform: translateY(-50%) scale(0.95); }
@@ -329,7 +330,7 @@
 <div class="container">
   <div class="header">
     <h1>🌸 每日个人信息记录<span class="local-tag">本地版</span></h1>
-    <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">🧚‍♀️</button>
+    <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">👤</button>
   </div>
 
   <!-- 1. 个人信息概览 -->
@@ -1279,15 +1280,25 @@ function exportData() {
   const isQQBrowser = /QQBrowser|QQ/.test(navigator.userAgent);
 
   if (isIOS || isQQBrowser) {
-    // iOS/QQ浏览器：使用隐藏的 iframe 方式，避免跳转空白页
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = dataUri;
-    document.body.appendChild(iframe);
-    setTimeout(() => {
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    }, 3000);
+    // iOS/QQ浏览器：将 JSON 内容复制到剪贴板，并提示用户手动保存
+    try {
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        alert('📋 数据已复制到剪贴板！\n\n请打开「备忘录」或「文件」App，\n粘贴内容后保存为 .json 文件。\n\n建议文件名：' + filename);
+      }).catch(() => {
+        // 如果剪贴板 API 失败，使用传统的 textarea 复制方式
+        const textarea = document.createElement('textarea');
+        textarea.value = jsonStr;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('📋 数据已复制到剪贴板！\n\n请打开「备忘录」或「文件」App，\n粘贴内容后保存为 .json 文件。\n\n建议文件名：' + filename);
+      });
+    } catch (e) {
+      alert('导出失败，请尝试使用邮件备份功能。');
+    }
     return;
   }
 
