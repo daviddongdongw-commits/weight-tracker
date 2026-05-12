@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>每日体重记录（本地版）</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffd1dc 0%, #ffafc5 40%, #ff8fa3 100%);
+    min-height: 100vh; color: #333;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  /* ===== 手机端响应式适配 ===== */
+  @media (max-width: 640px) {
+    .container { padding: 12px; }
+    h1 { font-size: 18px; letter-spacing: 1px; }
+    .card { padding: 14px; margin-bottom: 12px; border-radius: 12px; }
+    .card h2 { font-size: 15px; }
+    .profile-icon-btn { width: 38px; height: 38px; font-size: 18px; }
+    .profile-avatar { width: 44px; height: 44px; font-size: 20px; }
+    .profile-name { font-size: 16px; }
+    .profile-stats-inline { gap: 10px; margin-top: 10px; }
+    .profile-stat-item { min-width: 52px; }
+    .profile-stat-item .num { font-size: 17px; }
+    .profile-stat-item .txt { font-size: 10px; }
+    .bmi-value-num { font-size: 22px; }
+    .bmi-bar-wrap { padding: 14px 0 4px 0; }
+    .bmi-marker { width: 12px; height: 22px; }
+    .bmi-marker-label { font-size: 10px; top: -18px; padding: 1px 4px; }
+    .bmi-legend { gap: 6px; font-size: 10px; }
+    .tab-row { gap: 4px; }
+    .tab-row button { padding: 4px 8px; font-size: 12px; }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat { padding: 8px; }
+    .stat .value { font-size: 16px; }
+    .stat .label { font-size: 10px; }
+    .row-flex { gap: 8px; }
+    .row-flex > * { min-width: 100px; }
+    th, td { padding: 6px 8px; font-size: 13px; }
+    .actions-cell button { padding: 3px 8px; font-size: 11px; }
+    .records-page-bar { gap: 4px; margin-top: 8px; }
+    .records-page-bar .page-arrow { width: 28px; height: 28px; font-size: 12px; }
+    .records-page-bar .page-num { min-width: 24px; height: 24px; padding: 0 4px; font-size: 11px; border-radius: 4px; }
+    .records-page-bar .page-info { font-size: 10px; margin-left: 2px; }
+    .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal { padding: 18px; border-radius: 14px; }
+    .chart-wrap { height: 240px; }
+    .footer { font-size: 11px; margin-top: 12px; }
+  }
+
+  @media (max-width: 380px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .tab-row button { padding: 4px 6px; font-size: 11px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+  .header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
+  h1 { color: #fff; text-align: center; margin: 0; letter-spacing: 2px; font-size: 24px;
+       text-shadow: 0 2px 8px rgba(193,53,132,0.3); }
+  .profile-icon-btn {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; border-radius: 50%; background: #fff;
+    border: none; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(193,53,132,0.25); transition: transform .2s, box-shadow .2s;
+  }
+  .profile-icon-btn:hover { transform: translateY(-50%) scale(1.08); box-shadow: 0 6px 16px rgba(193,53,132,0.35); }
+  .profile-icon-btn:active { transform: translateY(-50%) scale(0.95); }
+
+  .card {
+    background: #fff; border-radius: 14px; padding: 22px;
+    margin-bottom: 20px; box-shadow: 0 8px 24px rgba(193,53,132,0.12);
+  }
+  .card h2 {
+    margin-top: 0; color: #c2185b; font-size: 18px;
+    border-left: 4px solid #ff5285; padding-left: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card h2 .tools { display: flex; gap: 6px; }
+  .card h2 .tools button { font-size: 12px; padding: 4px 10px; width: auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  label { font-size: 13px; color: #8b3d5f; display: block; margin-bottom: 4px; }
+  input, select, textarea, button {
+    font: inherit; padding: 8px 10px; border: 1px solid #f3c1d4; border-radius: 6px;
+    width: 100%; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #ff5285; }
+  textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, monospace; font-size: 13px; }
+  button {
+    background: #ff5285; color: #fff; border: none; cursor: pointer; font-weight: 600;
+    transition: background .2s, transform .1s;
+  }
+  button:hover { background: #e91e63; }
+  button:active { transform: scale(0.98); }
+  button.secondary { background: #c48aa1; }
+  button.secondary:hover { background: #a66d8a; }
+  button.danger { background: #ef5350; }
+  button.danger:hover { background: #d32f2f; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 4px; }
+  .stat {
+    background: linear-gradient(135deg, #fff5f8, #ffe3ed);
+    padding: 12px; border-radius: 10px; text-align: center;
+  }
+  .stat .label { font-size: 12px; color: #8b3d5f; }
+  .stat .value { font-size: 22px; font-weight: 700; color: #c2185b; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #fce4ec; text-align: left; }
+  th { background: #fff5f8; color: #8b3d5f; }
+  tr:hover td { background: #fff5f8; }
+  .msg { padding: 10px 14px; border-radius: 8px; margin-top: 10px; font-size: 14px; display: none; }
+  .msg.show { display: block; }
+  .msg.success { background: #c8e6c9; color: #2e7d32; }
+  .msg.error { background: #ffcdd2; color: #c62828; }
+  .chart-wrap { position: relative; height: 320px; }
+  .tab-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: nowrap; }
+  .tab-row button { width: auto; padding: 5px 10px; background: #fce4ec; color: #8b3d5f; white-space: nowrap; font-size: 13px; }
+  .tab-row button.active { background: #ff5285; color: #fff; }
+  .hint { font-size: 12px; color: #8b3d5f; margin-top: 4px; line-height: 1.6; }
+  .row-flex { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row-flex > * { flex: 1; min-width: 140px; }
+  .footer { text-align: center; color: rgba(255,255,255,0.95); font-size: 12px; margin-top: 20px;
+            text-shadow: 0 1px 4px rgba(193,53,132,0.3); }
+  .actions-cell button { width: auto; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+  .empty { text-align: center; color: #c48aa1; padding: 24px; }
+
+  /* 弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(193,53,132,0.35);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+    backdrop-filter: blur(3px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 18px; width: 92%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto; padding: 24px;
+    box-shadow: 0 20px 60px rgba(193,53,132,0.4);
+    animation: modalIn .25s ease-out;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-header h3 { margin: 0; font-size: 18px; color: #c2185b; }
+  .modal-close {
+    background: none; border: none; font-size: 24px; color: #c48aa1; cursor: pointer;
+    width: auto; padding: 0; line-height: 1;
+  }
+  .modal-close:hover { color: #8b3d5f; }
+  .modal .btn-row { margin-top: 16px; }
+
+  /* 个人信息概览卡片 */
+  .profile-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .profile-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff8fa3, #c2185b);
+    color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; box-shadow: 0 4px 10px rgba(193,53,132,0.3);
+  }
+  .profile-info { flex: 1; min-width: 200px; }
+  .profile-name { font-size: 18px; font-weight: 700; color: #c2185b; }
+  .profile-meta { font-size: 13px; color: #8b3d5f; margin-top: 2px; }
+  .profile-stats-inline { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .profile-stat-item { text-align: center; min-width: 60px; }
+  .profile-stat-item .num { font-size: 20px; font-weight: 700; color: #c2185b; }
+  .profile-stat-item .txt { font-size: 11px; color: #8b3d5f; }
+
+  .chart-empty {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: #c48aa1; font-size: 14px;
+  }
+  .local-tag {
+    display: inline-block; background: rgba(255,255,255,0.25); color: #fff;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* BMI 数值条 */
+  .bmi-section {
+    margin-top: 16px; padding: 14px; border-radius: 12px;
+    background: linear-gradient(135deg, #fff5f8, #ffe3ed);
+  }
+  .bmi-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .bmi-title { font-size: 13px; color: #8b3d5f; font-weight: 600; }
+  .bmi-value-box {
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .bmi-value-num { font-size: 26px; font-weight: 800; color: #c2185b; }
+  .bmi-value-cat {
+    font-size: 13px; padding: 2px 10px; border-radius: 999px;
+    color: #fff; font-weight: 600;
+  }
+  .bmi-bar-wrap { position: relative; padding: 18px 0 8px 0; }
+  .bmi-bar {
+    position: relative;
+    height: 14px; border-radius: 999px;
+    background: linear-gradient(to right,
+      #4fc3f7 0%, #4fc3f7 18.5%,   /* 偏瘦 */
+      #66bb6a 18.5%, #66bb6a 50%,   /* 正常 18.5-24 */
+      #ffa726 50%, #ffa726 73%,    /* 超重 24-28 */
+      #ef5350 73%, #ef5350 100%);  /* 肥胖 28+ */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .bmi-marker {
+    position: absolute; top: -6px;
+    width: 14px; height: 26px; border-radius: 6px;
+    background: #fff; border: 2px solid #c2185b;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    transform: translateX(-50%);
+    transition: left .5s cubic-bezier(.5,0,.3,1);
+  }
+  .bmi-marker::after {
+    content: ''; position: absolute; bottom: -7px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid currentColor;
+  }
+  .bmi-marker-label {
+    position: absolute; top: -22px; left: 50%;
+    transform: translateX(-50%);
+    background: #c2185b; color: #fff; font-size: 11px;
+    padding: 1px 6px; border-radius: 4px; white-space: nowrap;
+    font-weight: 600;
+  }
+  .bmi-scale {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: #8b3d5f;
+    margin-top: 6px; padding: 0 2px;
+  }
+  .bmi-legend {
+    display: flex; justify-content: space-around; flex-wrap: wrap;
+    gap: 8px; margin-top: 10px; font-size: 11px;
+  }
+  .bmi-legend-item { display: flex; align-items: center; gap: 4px; color: #6d4357; }
+  .bmi-legend-dot {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+  }
+  .bmi-empty {
+    text-align: center; color: #c48aa1; font-size: 13px; padding: 16px 0;
+  }
+
+  /* 记录列表分页 */
+  .records-page-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .records-page-bar .page-arrow {
+    width: 32px; height: 32px; padding: 0;
+    border-radius: 50%; background: #fce4ec; color: #c2185b;
+    font-size: 14px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer; transition: background .2s;
+    line-height: 1;
+  }
+  .records-page-bar .page-arrow:hover:not(:disabled) { background: #f8bbd0; }
+  .records-page-bar .page-arrow:disabled {
+    opacity: 0.4; cursor: not-allowed;
+  }
+  .records-page-bar .page-nums {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .records-page-bar .page-num {
+    min-width: 28px; height: 28px; padding: 0 6px;
+    border-radius: 6px; background: #fce4ec; color: #8b3d5f;
+    font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer; transition: background .2s, color .2s;
+    line-height: 1;
+  }
+  .records-page-bar .page-num:hover:not(.active) { background: #f8bbd0; color: #c2185b; }
+  .records-page-bar .page-num.active {
+    background: #ff5285; color: #fff;
+  }
+  .records-page-bar .page-info {
+    color: #c48aa1; font-size: 12px; margin-left: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🌸 每日体重记录<span class="local-tag">本地版</span></h1>
+    <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">👤</button>
+  </div>
+
+  <!-- 1. 个人信息概览 -->
+  <div class="card">
+    <h2>
+      <span>个人信息</span>
+      <span class="tools">
+        <button class="secondary" onclick="openEmailModal()" title="邮件备份">📧 邮件备份</button>
+        <button class="secondary" onclick="exportData()" title="导出全部数据为 JSON 文件">⬇ 导出</button>
+        <button class="secondary" onclick="triggerImportFile()" title="从 JSON 文件恢复">⬆ 导入</button>
+        <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importDataFile(event)" />
+      </span>
+    </h2>
+    <div class="profile-summary">
+      <div class="profile-avatar" id="profile-avatar">👤</div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name-display">未设置</div>
+        <div class="profile-meta" id="profile-meta-display">点击右上角图标完善个人信息</div>
+      </div>
+    </div>
+    <div class="profile-stats-inline" id="profile-stats-inline">
+      <div class="profile-stat-item"><div class="num" id="s-age">—</div><div class="txt">年龄</div></div>
+      <div class="profile-stat-item"><div class="num" id="s-gender">—</div><div class="txt">性别</div></div>
+      <div class="profile-stat-item"><div class="num" id="s-height">—</div><div class="txt">身高(cm)</div></div>
+      <div class="profile-stat-item"><div class="num" id="s-weight">—</div><div class="txt">最新体重(kg)</div></div>
+    </div>
+
+    <!-- BMI 数值条 -->
+    <div class="bmi-section">
+      <div class="bmi-header">
+        <span class="bmi-title">💗 BMI 健康指数</span>
+        <div class="bmi-value-box">
+          <span class="bmi-value-num" id="bmi-value-num">—</span>
+          <span class="bmi-value-cat" id="bmi-value-cat" style="display:none">—</span>
+        </div>
+      </div>
+      <div id="bmi-bar-area">
+        <div class="bmi-bar-wrap">
+          <div class="bmi-bar"></div>
+          <div class="bmi-marker" id="bmi-marker" style="display:none">
+            <div class="bmi-marker-label" id="bmi-marker-label">—</div>
+          </div>
+        </div>
+        <div class="bmi-scale">
+          <span>15</span>
+          <span>18.5</span>
+          <span>24</span>
+          <span>28</span>
+          <span>35+</span>
+        </div>
+        <div class="bmi-legend">
+          <span class="bmi-legend-item"><span class="bmi-legend-dot" style="background:#4fc3f7"></span>偏瘦 &lt;18.5</span>
+          <span class="bmi-legend-item"><span class="bmi-legend-dot" style="background:#66bb6a"></span>正常 18.5-24</span>
+          <span class="bmi-legend-item"><span class="bmi-legend-dot" style="background:#ffa726"></span>超重 24-28</span>
+          <span class="bmi-legend-item"><span class="bmi-legend-dot" style="background:#ef5350"></span>肥胖 ≥28</span>
+        </div>
+      </div>
+      <div class="bmi-empty" id="bmi-empty">填写身高并添加体重后将显示 BMI 数值条</div>
+    </div>
+  </div>
+
+  <!-- 2. 体重变化趋势 -->
+  <div class="card">
+    <h2>
+      <span>体重变化趋势</span>
+    </h2>
+    <div class="tab-row" id="period-tabs">
+      <button data-period="week" class="active" onclick="changePeriod(this, 'week')">按周</button>
+      <button data-period="month" onclick="changePeriod(this, 'month')">按月</button>
+      <button data-period="halfyear" onclick="changePeriod(this, 'halfyear')">半年</button>
+      <button data-period="year" onclick="changePeriod(this, 'year')">按年</button>
+      <button data-period="all" onclick="changePeriod(this, 'all')">全部</button>
+    </div>
+    <div id="trend-stats" class="stat-grid"></div>
+    <div class="chart-wrap" style="margin-top: 12px;">
+      <canvas id="trend-chart"></canvas>
+      <div id="chart-empty" class="chart-empty" style="display:none">暂无数据，添加或导入记录后会自动绘图</div>
+    </div>
+  </div>
+
+  <!-- 3. 体重记录列表 -->
+  <div class="card">
+    <h2>体重记录列表</h2>
+    <div class="tab-row">
+      <button class="active" data-order="asc" onclick="toggleOrder(this, 'asc')">按时间正序</button>
+      <button data-order="desc" onclick="toggleOrder(this, 'desc')">按时间倒序</button>
+    </div>
+    <table id="records-table">
+      <thead>
+        <tr><th>日期</th><th>时间</th><th>体重(kg)</th><th>操作</th></tr>
+      </thead>
+      <tbody id="records-tbody">
+        <tr><td colspan="4" class="empty">暂无记录</td></tr>
+      </tbody>
+    </table>
+    <div id="records-page-bar" class="records-page-bar" style="display:none">
+      <button class="page-arrow" id="page-prev" onclick="changeRecordsPage(recordsPage - 1)" title="上一页">◀</button>
+      <span id="records-page-nums" class="page-nums"></span>
+      <button class="page-arrow" id="page-next" onclick="changeRecordsPage(recordsPage + 1)" title="下一页">▶</button>
+      <span class="page-info" id="records-page-info"></span>
+    </div>
+  </div>
+
+  <!-- 4. 添加体重 -->
+  <div class="card">
+    <h2>添加体重</h2>
+    <div class="row-flex">
+      <div>
+        <label>日期</label>
+        <input id="r-date" type="date" />
+      </div>
+      <div>
+        <label>记录时间</label>
+        <input id="r-time" type="time" />
+      </div>
+      <div>
+        <label>体重 (kg)</label>
+        <input id="r-weight" type="number" step="0.1" placeholder="例如：65.5" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button onclick="addRecord()">➕ 添加记录</button>
+      <button class="secondary" onclick="fillNow()">⏱️ 填入此刻</button>
+    </div>
+    <div id="record-msg" class="msg"></div>
+  </div>
+
+  <!-- 5. 导入历史记录 -->
+  <div class="card">
+    <h2>导入历史记录</h2>
+    <label>粘贴文本（每行一条记录，自动识别日期/时间/体重）</label>
+    <textarea id="import-text" placeholder="2024-01-15 08:30 70.5
+2024-01-16 08:35 70.2
+2024/01/17,08:40,69.8
+2024-01-18 69.5"></textarea>
+    <div class="hint">
+      支持格式：<br>
+      &nbsp;• <code>2024-01-15 08:30 70.5</code><br>
+      &nbsp;• <code>2024-01-15,08:30,70.5</code>（逗号分隔）<br>
+      &nbsp;• <code>2024/01/15 70.5</code>（无时间，默认 00:00）<br>
+      &nbsp;• <code>10/26/2021 08:30 70.5</code>（月/日/年）<br>
+      &nbsp;• 以 # 开头的行会被当作注释忽略
+    </div>
+    <div class="btn-row">
+      <button onclick="importText()">📥 导入</button>
+      <button class="secondary" onclick="loadSample()">📋 示例数据</button>
+      <button class="danger" onclick="clearAllRecords()">🗑️ 清空所有数据</button>
+    </div>
+    <div id="import-msg" class="msg"></div>
+  </div>
+
+  <div class="footer">🌸 睿动智能体云平台 · 体重记录（数据保存在你的浏览器本地）</div>
+</div>
+
+<!-- 邮件备份弹窗 -->
+<div class="modal-overlay" id="email-modal" onclick="closeEmailModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>📧 邮件备份</h3>
+      <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+    </div>
+    <p style="color:#8b3d5f;font-size:13px;margin:0 0 12px 0;">将体重记录以邮件形式发送到您的邮箱</p>
+    <div>
+      <label>邮箱地址</label>
+      <input id="email-address" type="email" placeholder="例如：example@qq.com" />
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button onclick="sendEmailBackup()">📤 发送</button>
+      <button class="secondary" onclick="closeEmailModal()">❌ 取消</button>
+    </div>
+    <div id="email-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- 个人信息编辑弹窗 -->
+<div class="modal-overlay" id="profile-modal" onclick="closeProfileModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>编辑个人信息</h3>
+      <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+    </div>
+    <div class="grid">
+      <div>
+        <label>姓名</label>
+        <input id="p-name" placeholder="例如：小美" />
+      </div>
+      <div>
+        <label>性别</label>
+        <select id="p-gender">
+          <option value="">未填</option>
+          <option value="female">女</option>
+          <option value="male">男</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div>
+        <label>生日</label>
+        <input id="p-birthday" type="date" />
+      </div>
+      <div>
+        <label>身高 (cm)</label>
+        <input id="p-height" type="number" step="0.1" placeholder="例如：165" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button onclick="saveProfile()">💾 保存档案</button>
+      <button class="danger" onclick="resetProfile()">🗑️ 清空档案</button>
+    </div>
+    <div id="profile-msg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+// ========== 本地存储层 ==========
+const STORAGE_KEY = 'weight_tracker_v1';
+
+function defaultStore() {
+  return {
+    profile: { name: '', gender: '', birthday: '', height: null },
+    records: [],
+  };
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultStore();
+    const data = JSON.parse(raw);
+    const store = defaultStore();
+    Object.assign(store.profile, data.profile || {});
+    store.records = Array.isArray(data.records) ? data.records : [];
+    return store;
+  } catch (e) {
+    console.error('load failed', e);
+    return defaultStore();
+  }
+}
+
+function saveStore(store) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
+function nextId(records) {
+  if (!records.length) return 1;
+  return Math.max(...records.map(r => r.id || 0)) + 1;
+}
+
+// ========== 业务计算 ==========
+function calcAge(birthday) {
+  if (!birthday) return null;
+  const b = new Date(birthday);
+  if (isNaN(b.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - b.getFullYear();
+  const m = today.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < b.getDate())) age--;
+  return age >= 0 ? age : null;
+}
+
+function calcBMI(weight, heightCm) {
+  const w = parseFloat(weight);
+  const h = parseFloat(heightCm) / 100;
+  if (!w || !h || h <= 0) return null;
+  return Math.round((w / (h * h)) * 100) / 100;
+}
+
+function bmiCategory(bmi) {
+  if (bmi == null) return '';
+  if (bmi < 18.5) return '偏瘦';
+  if (bmi < 24) return '正常';
+  if (bmi < 28) return '超重';
+  return '肥胖';
+}
+
+function bmiColor(bmi) {
+  if (bmi == null) return '#c2185b';
+  if (bmi < 18.5) return '#4fc3f7';
+  if (bmi < 24) return '#66bb6a';
+  if (bmi < 28) return '#ffa726';
+  return '#ef5350';
+}
+
+// BMI 在 15-35 范围内的百分比位置
+function bmiToBarPercent(bmi) {
+  if (bmi == null) return 0;
+  const minB = 15, maxB = 35;
+  const v = Math.max(minB, Math.min(maxB, bmi));
+  return ((v - minB) / (maxB - minB)) * 100;
+}
+
+function sortedRecords(records) {
+  return [...records].sort((a, b) => {
+    const ka = (a.date || '') + ' ' + (a.time || '');
+    const kb = (b.date || '') + ' ' + (b.time || '');
+    return ka < kb ? -1 : ka > kb ? 1 : 0;
+  });
+}
+
+// ========== UI 通用 ==========
+function showMsg(id, text, ok=true) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'success' : 'error');
+  setTimeout(() => { el.className = 'msg'; }, 3000);
+}
+
+// ========== 弹窗 ==========
+function openProfileModal() {
+  document.getElementById('profile-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeProfileModal(e) {
+  if (e && e.target !== document.getElementById('profile-modal')) return;
+  document.getElementById('profile-modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeProfileModal();
+    closeEmailModal();
+  }
+});
+
+// ========== 邮件备份弹窗 ==========
+function openEmailModal() {
+  document.getElementById('email-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('email-address').value = '';
+  document.getElementById('email-msg').className = 'msg';
+}
+function closeEmailModal(e) {
+  if (e && e.target !== document.getElementById('email-modal')) return;
+  document.getElementById('email-modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function sendEmailBackup() {
+  const email = document.getElementById('email-address').value.trim();
+  const msgEl = document.getElementById('email-msg');
+
+  if (!email) {
+    showMsg('email-msg', '请输入邮箱地址', false);
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('email-msg', '邮箱格式不正确', false);
+    return;
+  }
+
+  const store = loadStore();
+  if (!store.records.length) {
+    showMsg('email-msg', '暂无体重记录可发送', false);
+    return;
+  }
+
+  // 生成邮件内容
+  const profile = store.profile;
+  const lines = [];
+  lines.push('🌸 每日体重记录备份');
+  lines.push('');
+  if (profile.name) lines.push(`姓名：${profile.name}`);
+  if (profile.gender) lines.push(`性别：${profile.gender === 'female' ? '女' : profile.gender === 'male' ? '男' : '其他'}`);
+  if (profile.birthday) lines.push(`生日：${profile.birthday}`);
+  if (profile.height) lines.push(`身高：${profile.height} cm`);
+  lines.push('');
+  lines.push('📊 体重记录：');
+  lines.push('');
+
+  const sorted = sortedRecords(store.records);
+  sorted.forEach((r, idx) => {
+    lines.push(`${idx + 1}. ${r.date} ${r.time} — ${r.weight} kg`);
+  });
+
+  lines.push('');
+  lines.push('—');
+  lines.push('睿动智能体云平台 · 体重记录');
+
+  const subject = encodeURIComponent('🌸 每日体重记录备份');
+  const body = encodeURIComponent(lines.join('\n'));
+
+  // iOS 邮件客户端唤起：必须使用隐藏的 iframe 方式
+  // QQ浏览器 / Safari / 微信 都支持这种方式
+  const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
+
+  // 方案1：创建隐藏的 iframe（iOS 最兼容的方式）
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = mailtoLink;
+  document.body.appendChild(iframe);
+
+  // 方案2：同时尝试 location.href 作为备用
+  setTimeout(() => {
+    window.location.href = mailtoLink;
+  }, 50);
+
+  // 清理 iframe
+  setTimeout(() => {
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+  }, 2000);
+
+  showMsg('email-msg', '已唤起邮件客户端，请检查并发送', true);
+  setTimeout(() => closeEmailModal(), 2000);
+}
+
+// ========== 全局状态 ==========
+let chart = null;
+let allPoints = [];
+let listOrder = 'asc';
+let currentPeriod = 'week';  // 默认按周
+let recordsPage = 0;
+const RECORDS_PER_PAGE = 10;
+
+// ========== 渲染主流程 ==========
+function refreshAll() {
+  const store = loadStore();
+  document.getElementById('p-name').value = store.profile.name || '';
+  document.getElementById('p-gender').value = store.profile.gender || '';
+  document.getElementById('p-birthday').value = store.profile.birthday || '';
+  document.getElementById('p-height').value = store.profile.height ?? '';
+
+  const records = sortedRecords(store.records);
+  const latest = records.length ? records[records.length - 1] : null;
+  const latestWeight = latest ? latest.weight : null;
+  const bmi = calcBMI(latestWeight, store.profile.height);
+  const age = calcAge(store.profile.birthday);
+
+  renderProfileSummary(store.profile, age, latestWeight);
+  renderBMIBar(bmi);
+  allPoints = records.map(r => ({ ...r, datetime: r.date + ' ' + r.time }));
+  renderTrendByPeriod();
+  renderTable();
+}
+
+function renderProfileSummary(profile, age, latestWeight) {
+  const genderMap = { male: '男', female: '女', other: '其他' };
+  const name = profile.name || '未设置';
+  const gender = genderMap[profile.gender] || '';
+  const ageText = age != null ? age + ' 岁' : '';
+  const heightText = profile.height ? profile.height + ' cm' : '';
+
+  document.getElementById('profile-name-display').textContent = name;
+
+  const metaParts = [];
+  if (gender) metaParts.push(gender);
+  if (ageText) metaParts.push(ageText);
+  if (heightText) metaParts.push(heightText);
+  const metaText = metaParts.length ? metaParts.join(' · ') : '点击右上角 👤 图标完善个人信息';
+  document.getElementById('profile-meta-display').textContent = metaText;
+
+  const avatarEl = document.getElementById('profile-avatar');
+  avatarEl.textContent = profile.name ? profile.name.charAt(0) : '👤';
+
+  document.getElementById('s-age').textContent = age != null ? age : '—';
+  document.getElementById('s-gender').textContent = genderMap[profile.gender] || '—';
+  document.getElementById('s-height').textContent = profile.height ? profile.height : '—';
+  document.getElementById('s-weight').textContent = latestWeight != null ? latestWeight : '—';
+}
+
+// ========== BMI 数值条 ==========
+function renderBMIBar(bmi) {
+  const numEl = document.getElementById('bmi-value-num');
+  const catEl = document.getElementById('bmi-value-cat');
+  const marker = document.getElementById('bmi-marker');
+  const markerLabel = document.getElementById('bmi-marker-label');
+  const barArea = document.getElementById('bmi-bar-area');
+  const emptyEl = document.getElementById('bmi-empty');
+
+  if (bmi == null) {
+    numEl.textContent = '—';
+    catEl.style.display = 'none';
+    marker.style.display = 'none';
+    barArea.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  numEl.textContent = bmi.toFixed(1);
+  numEl.style.color = bmiColor(bmi);
+
+  const cat = bmiCategory(bmi);
+  catEl.textContent = cat;
+  catEl.style.display = 'inline-block';
+  catEl.style.background = bmiColor(bmi);
+
+  barArea.style.display = 'block';
+  emptyEl.style.display = 'none';
+
+  marker.style.display = 'block';
+  const pct = bmiToBarPercent(bmi);
+  marker.style.left = pct + '%';
+  marker.style.borderColor = bmiColor(bmi);
+  marker.style.color = bmiColor(bmi);   // 让伪元素小三角的 currentColor 继承到此色
+  markerLabel.textContent = bmi.toFixed(1);
+  markerLabel.style.background = bmiColor(bmi);
+}
+
+// ========== 档案操作 ==========
+function saveProfile() {
+  const store = loadStore();
+  const name = document.getElementById('p-name').value.trim();
+  const gender = document.getElementById('p-gender').value;
+  const birthday = document.getElementById('p-birthday').value;
+  const heightRaw = document.getElementById('p-height').value;
+
+  if (birthday) {
+    const b = new Date(birthday);
+    if (isNaN(b.getTime())) {
+      showMsg('profile-msg', '生日格式不正确', false);
+      return;
+    }
+  }
+  let height = null;
+  if (heightRaw !== '' && heightRaw != null) {
+    const hv = parseFloat(heightRaw);
+    if (isNaN(hv) || hv <= 0 || hv > 300) {
+      showMsg('profile-msg', '身高必须为合理的数字（cm）', false);
+      return;
+    }
+    height = hv;
+  }
+
+  store.profile = { name, gender, birthday, height };
+  saveStore(store);
+  showMsg('profile-msg', '档案已保存', true);
+  refreshAll();
+  setTimeout(() => closeProfileModal(), 800);
+}
+
+function resetProfile() {
+  if (!confirm('确认清空档案信息？')) return;
+  const store = loadStore();
+  store.profile = defaultStore().profile;
+  saveStore(store);
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-gender').value = '';
+  document.getElementById('p-birthday').value = '';
+  document.getElementById('p-height').value = '';
+  showMsg('profile-msg', '档案已清空', true);
+  refreshAll();
+  setTimeout(() => closeProfileModal(), 800);
+}
+
+// ========== 体重记录 ==========
+function fillNow() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('r-date').value = `${y}-${m}-${d}`;
+  document.getElementById('r-time').value = `${hh}:${mm}`;
+}
+
+function addRecord() {
+  const dateVal = document.getElementById('r-date').value;
+  const timeVal = document.getElementById('r-time').value || '00:00';
+  const weightRaw = document.getElementById('r-weight').value;
+
+  if (!dateVal) { showMsg('record-msg', '日期必填', false); return; }
+  const w = parseFloat(weightRaw);
+  if (!weightRaw || isNaN(w) || w <= 0 || w > 500) {
+    showMsg('record-msg', '体重必须为合理的数字（kg）', false);
+    return;
+  }
+
+  const store = loadStore();
+  const rec = {
+    id: nextId(store.records),
+    date: dateVal,
+    time: timeVal,
+    weight: w,
+  };
+  store.records.push(rec);
+  saveStore(store);
+  showMsg('record-msg', '添加成功', true);
+  document.getElementById('r-weight').value = '';
+  refreshAll();
+}
+
+function deleteRecord(id) {
+  if (!confirm('确认删除该记录？')) return;
+  const store = loadStore();
+  const before = store.records.length;
+  store.records = store.records.filter(r => r.id !== id);
+  if (store.records.length === before) {
+    alert('记录不存在');
+    return;
+  }
+  saveStore(store);
+  refreshAll();
+}
+
+// ========== 文本导入 ==========
+function importText() {
+  const text = document.getElementById('import-text').value;
+  if (!text.trim()) {
+    showMsg('import-msg', '请粘贴文本', false);
+    return;
+  }
+  const store = loadStore();
+  const existingKeys = new Set(store.records.map(r => `${r.date}|${r.time}|${r.weight}`));
+  const added = [];
+  const skipped = [];
+
+  text.split(/\r?\n/).forEach((raw, idx) => {
+    const lineno = idx + 1;
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+
+    // 支持格式：YYYY-MM-DD, YYYY/MM/DD, MM/DD/YYYY, MM-DD-YYYY
+    let mDate = line.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    let y, mo, da;
+    if (mDate) {
+      y = +mDate[1]; mo = +mDate[2]; da = +mDate[3];
+      // 如果第一个数字>31且<=12，可能是 MM/DD/YYYY 格式（但先按 YYYY 处理）
+      // 如果 y <= 31 且 mo <= 12，存在歧义，优先按 YYYY-MM-DD
+    } else {
+      mDate = line.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+      if (mDate) {
+        mo = +mDate[1]; da = +mDate[2]; y = +mDate[3];
+      }
+    }
+    const mTime = line.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
+    if (!mDate || !y || !mo || !da) { skipped.push({line: lineno, raw, reason: '无法识别日期'}); return; }
+
+    if (mo < 1 || mo > 12 || da < 1 || da > 31) {
+      skipped.push({line: lineno, raw, reason: '日期非法'}); return;
+    }
+    const dStr = `${String(y).padStart(4,'0')}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+
+    let tStr = '00:00';
+    if (mTime) {
+      const hh = +mTime[1], mm = +mTime[2];
+      if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60) {
+        tStr = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+      }
+    }
+
+    let cleaned = line.replace(mDate[0], ' ');
+    if (mTime) cleaned = cleaned.replace(mTime[0], ' ');
+    const restNums = cleaned.match(/\d+\.?\d*/g);
+    if (!restNums || !restNums.length) {
+      skipped.push({line: lineno, raw, reason: '找不到体重数值'}); return;
+    }
+    const wv = parseFloat(restNums[restNums.length - 1]);
+    if (isNaN(wv) || wv <= 0 || wv > 500) {
+      skipped.push({line: lineno, raw, reason: '体重数值不合理'}); return;
+    }
+
+    const key = `${dStr}|${tStr}|${wv}`;
+    if (existingKeys.has(key)) {
+      skipped.push({line: lineno, raw, reason: '已存在相同记录'}); return;
+    }
+    existingKeys.add(key);
+
+    added.push({
+      id: nextId([...store.records, ...added]),
+      date: dStr, time: tStr, weight: wv,
+    });
+  });
+
+  store.records.push(...added);
+  saveStore(store);
+
+  const skipInfo = skipped.length
+    ? `，跳过 ${skipped.length} 条（${skipped.slice(0,3).map(s=>'第'+s.line+'行:'+s.reason).join('；')}${skipped.length>3?'...':''}）`
+    : '';
+  showMsg('import-msg', `成功导入 ${added.length} 条${skipInfo}`, added.length > 0);
+  document.getElementById('import-text').value = '';
+  refreshAll();
+}
+
+function clearAllRecords() {
+  if (!confirm('⚠️ 确定要清空所有体重记录吗？\n此操作不可恢复！')) return;
+  const store = loadStore();
+  const count = store.records.length;
+  store.records = [];
+  saveStore(store);
+  showMsg('import-msg', `已清空 ${count} 条体重记录`, true);
+  refreshAll();
+}
+
+function loadSample() {
+  const today = new Date();
+  const lines = [];
+  for (let i = 60; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const w = (55 + Math.sin(i / 5) * 1.2 - i * 0.03 + (Math.random() - 0.5) * 0.3).toFixed(1);
+    lines.push(`${y}-${mo}-${da} 08:30 ${w}`);
+  }
+  document.getElementById('import-text').value = lines.join('\n');
+}
+
+// ========== 导入 / 导出 JSON ==========
+function exportData() {
+  const store = loadStore();
+  const jsonStr = JSON.stringify(store, null, 2);
+  const ts = new Date().toISOString().slice(0, 10);
+  const filename = `weight-tracker-${ts}.json`;
+
+  // 检测 iOS / QQ浏览器
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isQQBrowser = /QQBrowser|QQ/.test(navigator.userAgent);
+
+  if (isIOS || isQQBrowser) {
+    // iOS/QQ浏览器：使用新窗口 + data URI 方式
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+    const newWindow = window.open(dataUri, '_blank');
+    if (!newWindow) {
+      // 如果被拦截，尝试直接跳转
+      window.location.href = dataUri;
+    }
+    return;
+  }
+
+  // 桌面浏览器：使用 Blob + download 属性（最标准的方式）
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerImportFile() {
+  document.getElementById('import-file').click();
+}
+
+function importDataFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object') throw new Error('文件格式错误');
+      const replace = confirm(`检测到 ${(data.records || []).length} 条记录\n确定 = 覆盖当前数据\n取消 = 合并到当前数据`);
+      const store = replace ? defaultStore() : loadStore();
+      if (data.profile) Object.assign(store.profile, data.profile);
+      if (Array.isArray(data.records)) {
+        const existingKeys = new Set(store.records.map(r => `${r.date}|${r.time}|${r.weight}`));
+        data.records.forEach(r => {
+          if (!r.date || r.weight == null) return;
+          const key = `${r.date}|${r.time || '00:00'}|${r.weight}`;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            store.records.push({
+              id: nextId(store.records),
+              date: r.date,
+              time: r.time || '00:00',
+              weight: parseFloat(r.weight),
+            });
+          }
+        });
+      }
+      saveStore(store);
+      alert(`导入成功！当前共有 ${store.records.length} 条记录`);
+      refreshAll();
+    } catch (err) {
+      alert('导入失败：' + err.message);
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// ========== 趋势图：时段切换 ==========
+function changePeriod(btn, period) {
+  document.querySelectorAll('#period-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPeriod = period;
+  renderTrendByPeriod();
+}
+
+function filterByPeriod(records, period) {
+  if (!records.length || period === 'all') return records;
+  // 以最新记录的时间为基准（如无最新就用今天），向前回溯
+  const lastTs = new Date(records[records.length - 1].date + 'T23:59:59').getTime();
+  let days = 7;
+  if (period === 'week')      days = 7;
+  else if (period === 'month')    days = 30;
+  else if (period === 'halfyear') days = 182;
+  else if (period === 'year')     days = 365;
+  const fromTs = lastTs - days * 86400000;
+  return records.filter(r => {
+    const t = new Date(r.date + 'T' + (r.time || '00:00') + ':00').getTime();
+    return t >= fromTs && t <= lastTs;
+  });
+}
+
+function renderTrendByPeriod() {
+  const filtered = filterByPeriod(allPoints, currentPeriod);
+  const stats = {};
+  if (filtered.length) {
+    const ws = filtered.map(r => r.weight);
+    stats.count = filtered.length;
+    stats.min = Math.round(Math.min(...ws) * 100) / 100;
+    stats.max = Math.round(Math.max(...ws) * 100) / 100;
+    stats.latest = ws[ws.length - 1];
+    stats.first = ws[0];
+    stats.change = Math.round((stats.latest - stats.first) * 100) / 100;
+    stats.average = Math.round(ws.reduce((a,b)=>a+b,0) / ws.length * 100) / 100;
+  }
+  renderTrendStats(stats, currentPeriod);
+  renderChart(filtered, currentPeriod);
+}
+
+function renderTrendStats(s, period) {
+  const wrap = document.getElementById('trend-stats');
+  const periodTxt = { week: '近 7 天', month: '近 30 天', halfyear: '近半年', year: '近一年', all: '全部' }[period] || '';
+  if (!s.count) {
+    wrap.innerHTML = `<div class="empty">${periodTxt}暂无数据</div>`;
+    return;
+  }
+  const arrow = s.change > 0 ? '↑' : s.change < 0 ? '↓' : '→';
+  const color = s.change > 0 ? '#e57373' : s.change < 0 ? '#66bb6a' : '#8b3d5f';
+  wrap.innerHTML = `
+    <div class="stat"><div class="label">${periodTxt}记录</div><div class="value">${s.count}</div></div>
+    <div class="stat"><div class="label">最新</div><div class="value">${s.latest} kg</div></div>
+    <div class="stat"><div class="label">最低</div><div class="value">${s.min} kg</div></div>
+    <div class="stat"><div class="label">最高</div><div class="value">${s.max} kg</div></div>
+    <div class="stat"><div class="label">平均</div><div class="value">${s.average} kg</div></div>
+    <div class="stat"><div class="label">期内变化</div><div class="value" style="color:${color}">${arrow} ${Math.abs(s.change)} kg</div></div>
+  `;
+}
+
+function renderChart(records, period) {
+  const canvas = document.getElementById('trend-chart');
+  const emptyEl = document.getElementById('chart-empty');
+  if (!records.length) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'flex';
+    emptyEl.textContent = '暂无数据，添加或导入记录后会自动绘图';
+    if (chart) { chart.destroy(); chart = null; }
+    return;
+  }
+  canvas.style.display = '';
+  emptyEl.style.display = 'none';
+
+  if (typeof Chart === 'undefined') {
+    emptyEl.textContent = '⚠️ Chart.js 未能加载（离线？），表格仍可用';
+    emptyEl.style.display = 'flex';
+    canvas.style.display = 'none';
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+  // 根据时段调整 X 轴标签密度
+  const labels = records.map(r => {
+    if (period === 'year' || period === 'halfyear') return r.date;
+    if (period === 'month') return r.date.slice(5);  // MM-DD
+    return r.date.slice(5) + ' ' + r.time;           // 周/全部
+  });
+  const data = records.map(r => r.weight);
+  if (chart) chart.destroy();
+
+  // 粉色渐变填充
+  const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+  gradient.addColorStop(0, 'rgba(255,107,157,0.35)');
+  gradient.addColorStop(1, 'rgba(255,107,157,0.02)');
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '体重 (kg)',
+        data,
+        borderColor: '#ff5285',
+        backgroundColor: gradient,
+        tension: 0.35,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#c2185b',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(194,24,91,0.9)',
+          titleColor: '#fff', bodyColor: '#fff',
+          padding: 10, cornerRadius: 8,
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 10, autoSkip: true, color: '#8b3d5f' },
+          grid: { color: 'rgba(255,107,157,0.08)' }
+        },
+        y: {
+          title: { display: true, text: 'kg', color: '#8b3d5f' },
+          ticks: { color: '#8b3d5f', stepSize: 1 },
+          grid: { color: 'rgba(255,107,157,0.12)' }
+        },
+      },
+    },
+  });
+}
+
+// ========== 记录表 ==========
+function toggleOrder(btn, order) {
+  // 兼容两个 tab-row
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  listOrder = order;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('records-tbody');
+  const pageBar = document.getElementById('records-page-bar');
+  const pageNums = document.getElementById('records-page-nums');
+  const pageInfo = document.getElementById('records-page-info');
+  const prevBtn = document.getElementById('page-prev');
+  const nextBtn = document.getElementById('page-next');
+  if (!allPoints.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">暂无记录</td></tr>';
+    pageBar.style.display = 'none';
+    return;
+  }
+  const arr = listOrder === 'asc' ? allPoints : [...allPoints].reverse();
+  const total = arr.length;
+
+  if (total <= RECORDS_PER_PAGE) {
+    // 10条以内直接全部显示
+    tbody.innerHTML = arr.map(p => `
+      <tr>
+        <td>${p.date}</td>
+        <td>${p.time}</td>
+        <td><strong>${p.weight}</strong></td>
+        <td class="actions-cell"><button class="danger" onclick="deleteRecord(${p.id})">删除</button></td>
+      </tr>
+    `).join('');
+    pageBar.style.display = 'none';
+    return;
+  }
+
+  // 超过10条：分页显示
+  const totalPages = Math.ceil(total / RECORDS_PER_PAGE);
+  if (recordsPage >= totalPages) recordsPage = totalPages - 1;
+  if (recordsPage < 0) recordsPage = 0;
+  const start = recordsPage * RECORDS_PER_PAGE;
+  const pageData = arr.slice(start, start + RECORDS_PER_PAGE);
+
+  tbody.innerHTML = pageData.map(p => `
+    <tr>
+      <td>${p.date}</td>
+      <td>${p.time}</td>
+      <td><strong>${p.weight}</strong></td>
+      <td class="actions-cell"><button class="danger" onclick="deleteRecord(${p.id})">删除</button></td>
+    </tr>
+  `).join('');
+
+  // 渲染页码按钮（最多显示5个页码）
+  let numsHtml = '';
+  let startPage = Math.max(0, recordsPage - 2);
+  let endPage = Math.min(totalPages - 1, startPage + 4);
+  if (endPage - startPage < 4) {
+    startPage = Math.max(0, endPage - 4);
+  }
+  for (let i = startPage; i <= endPage; i++) {
+    const cls = i === recordsPage ? 'page-num active' : 'page-num';
+    numsHtml += `<button class="${cls}" onclick="changeRecordsPage(${i})">${i + 1}</button>`;
+  }
+  pageNums.innerHTML = numsHtml;
+
+  // 左右箭头状态
+  prevBtn.disabled = recordsPage === 0;
+  nextBtn.disabled = recordsPage >= totalPages - 1;
+
+  pageInfo.textContent = `共 ${total} 条`;
+  pageBar.style.display = 'flex';
+}
+
+function changeRecordsPage(page) {
+  recordsPage = parseInt(page, 10) || 0;
+  renderTable();
+}
+
+// ========== 启动 ==========
+window.addEventListener('DOMContentLoaded', () => {
+  fillNow();
+  refreshAll();
+});
+</script>
+</body>
+</html>
