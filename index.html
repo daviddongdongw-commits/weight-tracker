@@ -401,183 +401,195 @@
     </div>
   </div>
 
-  <!-- 2. 体重变化趋势 -->
-  <div class="card">
-    <h2>
-      <span>体重变化趋势</span>
-    </h2>
-    <div class="tab-row" id="period-tabs">
-      <button data-period="week" class="active" onclick="changePeriod(this, 'week')">按周</button>
-      <button data-period="month" onclick="changePeriod(this, 'month')">按月</button>
-      <button data-period="halfyear" onclick="changePeriod(this, 'halfyear')">半年</button>
-      <button data-period="year" onclick="changePeriod(this, 'year')">按年</button>
-      <button data-period="all" onclick="changePeriod(this, 'all')">全部</button>
-    </div>
-    <div id="trend-stats" class="stat-grid"></div>
-    <div class="chart-wrap" style="margin-top: 12px;">
-      <canvas id="trend-chart"></canvas>
-      <div id="chart-empty" class="chart-empty" style="display:none">暂无数据，添加或导入记录后会自动绘图</div>
-    </div>
+  <!-- 主内容 Tab 切换 -->
+  <div class="main-tabs" style="display:flex; gap:10px; margin-bottom:16px;">
+    <button class="main-tab active" id="tab-weight" onclick="switchMainTab('weight')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#ff5285; color:#fff; cursor:pointer;">⚖️ 体重健康</button>
+    <button class="main-tab" id="tab-menses" onclick="switchMainTab('menses')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#fce4ec; color:#8b3d5f; cursor:pointer;">🌸 月经管理</button>
   </div>
 
-  <!-- 3. 体重记录列表 -->
-  <div class="card">
-    <h2>体重记录列表</h2>
-    <div class="tab-row">
-      <button class="active" data-order="desc" onclick="toggleOrder(this, 'desc')">按时间倒序</button>
-      <button data-order="asc" onclick="toggleOrder(this, 'asc')">按时间正序</button>
-    </div>
-    <table id="records-table">
-      <thead>
-        <tr><th>日期</th><th>时间</th><th>体重(kg)</th><th>备注</th><th>操作</th></tr>
-      </thead>
-      <tbody id="records-tbody">
-        <tr><td colspan="5" class="empty">暂无记录</td></tr>
-      </tbody>
-    </table>
-    <div id="records-page-bar" class="records-page-bar" style="display:none">
-      <button class="page-arrow" id="page-prev" onclick="changeRecordsPage(recordsPage - 1)" title="上一页">◀</button>
-      <span id="records-page-nums" class="page-nums"></span>
-      <button class="page-arrow" id="page-next" onclick="changeRecordsPage(recordsPage + 1)" title="下一页">▶</button>
-      <span class="page-info" id="records-page-info"></span>
-    </div>
-  </div>
-
-  <!-- 4. 添加体重 -->
-  <div class="card">
-    <h2>添加体重</h2>
-    <div class="row-flex">
-      <div>
-        <label>日期</label>
-        <input id="r-date" type="date" />
+  <!-- 体重健康内容区 -->
+  <div id="section-weight">
+    <!-- 2. 体重变化趋势 -->
+    <div class="card">
+      <h2>
+        <span>体重变化趋势</span>
+      </h2>
+      <div class="tab-row" id="period-tabs">
+        <button data-period="week" class="active" onclick="changePeriod(this, 'week')">按周</button>
+        <button data-period="month" onclick="changePeriod(this, 'month')">按月</button>
+        <button data-period="halfyear" onclick="changePeriod(this, 'halfyear')">半年</button>
+        <button data-period="year" onclick="changePeriod(this, 'year')">按年</button>
+        <button data-period="all" onclick="changePeriod(this, 'all')">全部</button>
       </div>
-      <div>
-        <label>记录时间</label>
-        <input id="r-time" type="time" />
-      </div>
-      <div>
-        <label>体重 (kg)</label>
-        <input id="r-weight" type="number" step="0.1" placeholder="例如：65.5" />
+      <div id="trend-stats" class="stat-grid"></div>
+      <div class="chart-wrap" style="margin-top: 12px;">
+        <canvas id="trend-chart"></canvas>
+        <div id="chart-empty" class="chart-empty" style="display:none">暂无数据，添加或导入记录后会自动绘图</div>
       </div>
     </div>
-    <div style="margin-top: 10px;">
-      <label>备注</label>
-      <input id="r-note" type="text" placeholder="例如：早起空腹、运动后..." />
-    </div>
-    <div class="btn-row">
-      <button onclick="addRecord()">➕ 添加记录</button>
-    </div>
-    <div id="record-msg" class="msg"></div>
-  </div>
 
-  <!-- 5. 月经间隔变化趋势 -->
-  <div class="card">
-    <h2>月经间隔变化趋势</h2>
-    <div class="tab-row">
-      <button data-mperiod="3m" onclick="setMensesPeriod(this, '3m')">3个月</button>
-      <button data-mperiod="6m" onclick="setMensesPeriod(this, '6m')">半年</button>
-      <button class="active" data-mperiod="1y" onclick="setMensesPeriod(this, '1y')">1年</button>
-      <button data-mperiod="2y" onclick="setMensesPeriod(this, '2y')">2年</button>
-      <button data-mperiod="all" onclick="setMensesPeriod(this, 'all')">全部</button>
-    </div>
-    <div class="chart-wrap" style="height:260px;">
-      <canvas id="menses-chart"></canvas>
-    </div>
-  </div>
-
-  <!-- 6. 月经记录 -->
-  <div class="card">
-    <h2>月经记录</h2>
-    <div class="tab-row">
-      <button class="active" data-morder="desc" onclick="toggleMOrder(this, 'desc')">按时间倒序</button>
-      <button data-morder="asc" onclick="toggleMOrder(this, 'asc')">按时间正序</button>
-    </div>
-    <table id="menses-table">
-      <thead>
-        <tr><th>日期</th><th>记录时间</th><th>备注</th><th>操作</th></tr>
-      </thead>
-      <tbody id="menses-tbody">
-        <tr><td colspan="4" class="empty">暂无月经记录</td></tr>
-      </tbody>
-    </table>
-    <div id="menses-page-bar" class="records-page-bar" style="display:none">
-      <button class="page-arrow" id="m-page-prev" onclick="changeMensesPage(mensesPage - 1)" title="上一页">◀</button>
-      <span id="menses-page-nums" class="page-nums"></span>
-      <button class="page-arrow" id="m-page-next" onclick="changeMensesPage(mensesPage + 1)" title="下一页">▶</button>
-      <span class="page-info" id="menses-page-info"></span>
-    </div>
-  </div>
-
-  <!-- 6. 添加月经记录 -->
-  <div class="card">
-    <h2>添加月经记录</h2>
-    <div class="row-flex">
-      <div>
-        <label>日期</label>
-        <input id="m-date" type="date" />
+    <!-- 3. 体重记录列表 -->
+    <div class="card">
+      <h2>体重记录列表</h2>
+      <div class="tab-row">
+        <button class="active" data-order="desc" onclick="toggleOrder(this, 'desc')">按时间倒序</button>
+        <button data-order="asc" onclick="toggleOrder(this, 'asc')">按时间正序</button>
       </div>
-      <div>
-        <label>记录时间</label>
-        <input id="m-time" type="time" />
+      <table id="records-table">
+        <thead>
+          <tr><th>日期</th><th>时间</th><th>体重(kg)</th><th>备注</th><th>操作</th></tr>
+        </thead>
+        <tbody id="records-tbody">
+          <tr><td colspan="5" class="empty">暂无记录</td></tr>
+        </tbody>
+      </table>
+      <div id="records-page-bar" class="records-page-bar" style="display:none">
+        <button class="page-arrow" id="page-prev" onclick="changeRecordsPage(recordsPage - 1)" title="上一页">◀</button>
+        <span id="records-page-nums" class="page-nums"></span>
+        <button class="page-arrow" id="page-next" onclick="changeRecordsPage(recordsPage + 1)" title="下一页">▶</button>
+        <span class="page-info" id="records-page-info"></span>
       </div>
     </div>
-    <div style="margin-top: 10px;">
-      <label>备注</label>
-      <input id="m-note" type="text" placeholder="例如：第一天、量多、痛经..." />
-    </div>
-    <div class="btn-row">
-      <button onclick="addMenses()">➕ 添加月经记录</button>
-    </div>
-    <div id="menses-msg" class="msg"></div>
-  </div>
 
-  <!-- 7. 导入月经历史记录 -->
-  <div class="card">
-    <h2>导入月经历史记录</h2>
-    <label>粘贴文本（每行一条记录，自动识别日期/备注）</label>
-    <textarea id="import-menses-text" placeholder="2024-01-15 第一天
-2024-02-10
-2024/03/15,第二天
-12/6/2023 痛经"></textarea>
-    <div class="hint">
-      支持格式：<br>
-      &nbsp;• <code>2024-01-15 第一天</code> ← 日期后空格+内容自动识别为备注<br>
-      &nbsp;• <code>2024-01-15</code>（仅日期，备注为空）<br>
-      &nbsp;• <code>2024/01/15,第一天</code>（逗号分隔）<br>
-      &nbsp;• <code>10/26/2021 痛经</code>（月/日/年）<br>
-      &nbsp;• 以 # 开头的行会被当作注释忽略
+    <!-- 4. 添加体重 -->
+    <div class="card">
+      <h2>添加体重</h2>
+      <div class="row-flex">
+        <div>
+          <label>日期</label>
+          <input id="r-date" type="date" />
+        </div>
+        <div>
+          <label>记录时间</label>
+          <input id="r-time" type="time" />
+        </div>
+        <div>
+          <label>体重 (kg)</label>
+          <input id="r-weight" type="number" step="0.1" placeholder="例如：65.5" />
+        </div>
+      </div>
+      <div style="margin-top: 10px;">
+        <label>备注</label>
+        <input id="r-note" type="text" placeholder="例如：早起空腹、运动后..." />
+      </div>
+      <div class="btn-row">
+        <button onclick="addRecord()">➕ 添加记录</button>
+      </div>
+      <div id="record-msg" class="msg"></div>
     </div>
-    <div class="btn-row">
-      <button onclick="importMensesText()">📥 导入月经记录</button>
-      <button class="danger" onclick="clearAllMenses()">🗑️ 清空月经记录</button>
-    </div>
-    <div id="import-menses-msg" class="msg"></div>
-  </div>
 
-  <!-- 8. 导入历史记录（体重） -->
-  <div class="card">
-    <h2>导入历史记录（体重）</h2>
-    <label>粘贴文本（每行一条记录，自动识别日期/时间/体重/备注）</label>
-    <textarea id="import-text" placeholder="2024-01-15 08:30 70.5
+    <!-- 8. 导入历史记录（体重） -->
+    <div class="card">
+      <h2>导入历史记录（体重）</h2>
+      <label>粘贴文本（每行一条记录，自动识别日期/时间/体重/备注）</label>
+      <textarea id="import-text" placeholder="2024-01-15 08:30 70.5
 2024-01-16 08:35 70.2 （晚）
 2024/01/17,08:40,69.8 早起空腹
 2024-01-18 69.5
 12/6/2023 8:00 52.6 （晚）"></textarea>
-    <div class="hint">
-      支持格式：<br>
-      &nbsp;• <code>2024-01-15 08:30 70.5</code><br>
-      &nbsp;• <code>2024-01-15 08:30 70.5 （晚）</code> ← 体重后空格+内容自动识别为备注<br>
-      &nbsp;• <code>2024-01-15,08:30,70.5</code>（逗号分隔）<br>
-      &nbsp;• <code>2024/01/15 70.5</code>（无时间，默认 00:00）<br>
-      &nbsp;• <code>10/26/2021 08:30 70.5</code>（月/日/年）<br>
-      &nbsp;• 以 # 开头的行会被当作注释忽略
+      <div class="hint">
+        支持格式：<br>
+        &nbsp;• <code>2024-01-15 08:30 70.5</code><br>
+        &nbsp;• <code>2024-01-15 08:30 70.5 （晚）</code> ← 体重后空格+内容自动识别为备注<br>
+        &nbsp;• <code>2024-01-15,08:30,70.5</code>（逗号分隔）<br>
+        &nbsp;• <code>2024/01/15 70.5</code>（无时间，默认 00:00）<br>
+        &nbsp;• <code>10/26/2021 08:30 70.5</code>（月/日/年）<br>
+        &nbsp;• 以 # 开头的行会被当作注释忽略
+      </div>
+      <div class="btn-row">
+        <button onclick="importText()">📥 导入体重记录</button>
+        <button class="secondary" onclick="loadSample()">📋 示例数据</button>
+        <button class="danger" onclick="clearAllRecords()">🗑️ 清空体重数据</button>
+      </div>
+      <div id="import-msg" class="msg"></div>
     </div>
-    <div class="btn-row">
-      <button onclick="importText()">📥 导入体重记录</button>
-      <button class="secondary" onclick="loadSample()">📋 示例数据</button>
-      <button class="danger" onclick="clearAllRecords()">🗑️ 清空体重数据</button>
+  </div>
+
+  <!-- 月经管理内容区 -->
+  <div id="section-menses" style="display:none;">
+    <!-- 5. 月经间隔变化趋势 -->
+    <div class="card">
+      <h2>月经间隔变化趋势</h2>
+      <div class="tab-row">
+        <button data-mperiod="3m" onclick="setMensesPeriod(this, '3m')">3个月</button>
+        <button data-mperiod="6m" onclick="setMensesPeriod(this, '6m')">半年</button>
+        <button class="active" data-mperiod="1y" onclick="setMensesPeriod(this, '1y')">1年</button>
+        <button data-mperiod="2y" onclick="setMensesPeriod(this, '2y')">2年</button>
+        <button data-mperiod="all" onclick="setMensesPeriod(this, 'all')">全部</button>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="menses-chart"></canvas>
+      </div>
     </div>
-    <div id="import-msg" class="msg"></div>
+
+    <!-- 6. 月经记录 -->
+    <div class="card">
+      <h2>月经记录</h2>
+      <div class="tab-row">
+        <button class="active" data-morder="desc" onclick="toggleMOrder(this, 'desc')">按时间倒序</button>
+        <button data-morder="asc" onclick="toggleMOrder(this, 'asc')">按时间正序</button>
+      </div>
+      <table id="menses-table">
+        <thead>
+          <tr><th>日期</th><th>记录时间</th><th>备注</th><th>操作</th></tr>
+        </thead>
+        <tbody id="menses-tbody">
+          <tr><td colspan="4" class="empty">暂无月经记录</td></tr>
+        </tbody>
+      </table>
+      <div id="menses-page-bar" class="records-page-bar" style="display:none">
+        <button class="page-arrow" id="m-page-prev" onclick="changeMensesPage(mensesPage - 1)" title="上一页">◀</button>
+        <span id="menses-page-nums" class="page-nums"></span>
+        <button class="page-arrow" id="m-page-next" onclick="changeMensesPage(mensesPage + 1)" title="下一页">▶</button>
+        <span class="page-info" id="menses-page-info"></span>
+      </div>
+    </div>
+
+    <!-- 7. 添加月经记录 -->
+    <div class="card">
+      <h2>添加月经记录</h2>
+      <div class="row-flex">
+        <div>
+          <label>日期</label>
+          <input id="m-date" type="date" />
+        </div>
+        <div>
+          <label>记录时间</label>
+          <input id="m-time" type="time" />
+        </div>
+      </div>
+      <div style="margin-top: 10px;">
+        <label>备注</label>
+        <input id="m-note" type="text" placeholder="例如：第一天、量多、痛经..." />
+      </div>
+      <div class="btn-row">
+        <button onclick="addMenses()">➕ 添加月经记录</button>
+      </div>
+      <div id="menses-msg" class="msg"></div>
+    </div>
+
+    <!-- 8. 导入月经历史记录 -->
+    <div class="card">
+      <h2>导入月经历史记录</h2>
+      <label>粘贴文本（每行一条记录，自动识别日期/备注）</label>
+      <textarea id="import-menses-text" placeholder="2024-01-15 第一天
+2024-02-10
+2024/03/15,第二天
+12/6/2023 痛经"></textarea>
+      <div class="hint">
+        支持格式：<br>
+        &nbsp;• <code>2024-01-15 第一天</code> ← 日期后空格+内容自动识别为备注<br>
+        &nbsp;• <code>2024-01-15</code>（仅日期，备注为空）<br>
+        &nbsp;• <code>2024/01/15,第一天</code>（逗号分隔）<br>
+        &nbsp;• <code>10/26/2021 痛经</code>（月/日/年）<br>
+        &nbsp;• 以 # 开头的行会被当作注释忽略
+      </div>
+      <div class="btn-row">
+        <button onclick="importMensesText()">📥 导入月经记录</button>
+        <button class="danger" onclick="clearAllMenses()">🗑️ 清空月经记录</button>
+      </div>
+      <div id="import-menses-msg" class="msg"></div>
+    </div>
   </div>
 
   <div class="footer">🌸 睿动智能体云平台 · 体重记录（数据保存在你的浏览器本地）</div>
@@ -1861,6 +1873,36 @@ function renderMensesTrend() {
       interaction: { mode: 'index', intersect: false },
     }
   });
+}
+
+// ========== 主 Tab 切换 ==========
+function switchMainTab(tab) {
+  const weightBtn = document.getElementById('tab-weight');
+  const mensesBtn = document.getElementById('tab-menses');
+  const weightSection = document.getElementById('section-weight');
+  const mensesSection = document.getElementById('section-menses');
+
+  if (tab === 'weight') {
+    weightBtn.classList.add('active');
+    weightBtn.style.background = '#ff5285';
+    weightBtn.style.color = '#fff';
+    mensesBtn.classList.remove('active');
+    mensesBtn.style.background = '#fce4ec';
+    mensesBtn.style.color = '#8b3d5f';
+    weightSection.style.display = 'block';
+    mensesSection.style.display = 'none';
+  } else {
+    mensesBtn.classList.add('active');
+    mensesBtn.style.background = '#ff5285';
+    mensesBtn.style.color = '#fff';
+    weightBtn.classList.remove('active');
+    weightBtn.style.background = '#fce4ec';
+    weightBtn.style.color = '#8b3d5f';
+    weightSection.style.display = 'none';
+    mensesSection.style.display = 'block';
+    // 切换到月经Tab时重新渲染图表（确保canvas尺寸正确）
+    renderMensesTrend();
+  }
 }
 
 // ========== 启动 ==========
