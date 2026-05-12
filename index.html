@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>每日体重记录（本地版）</title>
+<title>每日个人信息记录（本地版）</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; }
@@ -40,7 +40,7 @@
     .tab-row button { padding: 4px 8px; font-size: 12px; }
     .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .stat { padding: 8px; }
-    .stat .value { font-size: 16px; }
+    .stat .value { font-size: 14px; }
     .stat .label { font-size: 10px; }
     .row-flex { gap: 8px; }
     .row-flex > * { min-width: 100px; }
@@ -69,7 +69,10 @@
   }
 
   @media (max-width: 380px) {
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat { padding: 6px; }
+    .stat .value { font-size: 12px; }
+    .stat .label { font-size: 9px; }
     .tab-row button { padding: 4px 6px; font-size: 11px; }
     .grid { grid-template-columns: 1fr; }
   }
@@ -94,8 +97,18 @@
     border-left: 4px solid #ff5285; padding-left: 10px;
     display: flex; align-items: center; justify-content: space-between;
   }
+  .card h2.toggle-header {
+    padding-left: 10px;
+  }
   .card h2 .tools { display: flex; gap: 6px; }
   .card h2 .tools button { font-size: 12px; padding: 4px 10px; width: auto; }
+
+  /* 可展开/收起区域 */
+  .toggle-header { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
+  .toggle-header .arrow { display: inline-block; transition: transform .2s; font-size: 14px; color: #c2185b; }
+  .toggle-header.collapsed .arrow { transform: rotate(-90deg); }
+  .toggle-content { overflow: hidden; transition: max-height .3s ease, opacity .3s ease; max-height: 2000px; opacity: 1; }
+  .toggle-content.collapsed { max-height: 0; opacity: 0; margin-top: 0 !important; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
   label { font-size: 13px; color: #8b3d5f; display: block; margin-bottom: 4px; }
   input, select, textarea, button {
@@ -115,13 +128,13 @@
   button.danger { background: #ef5350; }
   button.danger:hover { background: #d32f2f; }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 4px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 4px; }
   .stat {
     background: linear-gradient(135deg, #fff5f8, #ffe3ed);
     padding: 12px; border-radius: 10px; text-align: center;
   }
-  .stat .label { font-size: 12px; color: #8b3d5f; }
-  .stat .value { font-size: 22px; font-weight: 700; color: #c2185b; margin-top: 4px; }
+  .stat .label { font-size: 11px; color: #8b3d5f; }
+  .stat .value { font-size: 16px; font-weight: 700; color: #c2185b; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 7px 8px; border-bottom: 1px solid #fce4ec; text-align: left; vertical-align: middle; }
   th { background: #fff5f8; color: #8b3d5f; font-weight: 600; }
@@ -205,9 +218,9 @@
     height: 100%; color: #c48aa1; font-size: 14px;
   }
   .local-tag {
-    display: inline-block; background: rgba(255,255,255,0.25); color: #fff;
-    padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;
-    vertical-align: middle;
+    display: inline-block; background: #c2185b; color: #fff;
+    padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 6px;
+    vertical-align: middle; font-weight: 600;
   }
 
   /* BMI 数值条 */
@@ -315,8 +328,8 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>🌸 每日体重记录<span class="local-tag">本地版</span></h1>
-    <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">👤</button>
+    <h1>🌸 每日个人信息记录<span class="local-tag">本地版</span></h1>
+    <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">🧚‍♀️</button>
   </div>
 
   <!-- 1. 个人信息概览 -->
@@ -326,8 +339,7 @@
       <span class="tools">
         <button class="secondary" onclick="openEmailModal()" title="邮件备份">📧 邮件备份</button>
         <button class="secondary" onclick="exportData()" title="导出全部数据为 JSON 文件">⬇ 导出</button>
-        <button class="secondary" onclick="triggerImportFile()" title="从 JSON 文件恢复">⬆ 导入</button>
-        <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importDataFile(event)" />
+        <button class="danger" onclick="initAllData()" title="清空所有数据（个人信息、体重、月经）">🗑️ 初始化</button>
       </span>
     </h2>
     <div class="profile-summary">
@@ -403,11 +415,11 @@
 
   <!-- 主内容 Tab 切换 -->
   <div class="main-tabs" style="display:flex; gap:10px; margin-bottom:16px;">
-    <button class="main-tab active" id="tab-weight" onclick="switchMainTab('weight')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#ff5285; color:#fff; cursor:pointer;">⚖️ 体重健康</button>
-    <button class="main-tab" id="tab-menses" onclick="switchMainTab('menses')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#fce4ec; color:#8b3d5f; cursor:pointer;">🌸 月经管理</button>
+    <button class="main-tab active" id="tab-weight" onclick="switchMainTab('weight')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#ff5285; color:#fff; cursor:pointer;">⚖️ 体重管理</button>
+    <button class="main-tab" id="tab-menses" onclick="switchMainTab('menses')" style="flex:1; padding:12px; font-size:15px; font-weight:600; border-radius:10px; border:none; background:#fce4ec; color:#8b3d5f; cursor:pointer;" title="请设置性别为女性以使用此功能">🌸 月经管理</button>
   </div>
 
-  <!-- 体重健康内容区 -->
+  <!-- 体重管理内容区 -->
   <div id="section-weight">
     <!-- 2. 体重变化趋势 -->
     <div class="card">
@@ -424,7 +436,7 @@
       <div id="trend-stats" class="stat-grid"></div>
       <div class="chart-wrap" style="margin-top: 12px;">
         <canvas id="trend-chart"></canvas>
-        <div id="chart-empty" class="chart-empty" style="display:none">暂无数据，添加或导入记录后会自动绘图</div>
+        <div id="chart-empty" class="chart-empty" style="display:none">暂无数据，添加记录后会自动绘图</div>
       </div>
     </div>
 
@@ -480,28 +492,33 @@
 
     <!-- 8. 导入历史记录（体重） -->
     <div class="card">
-      <h2>导入历史记录（体重）</h2>
-      <label>粘贴文本（每行一条记录，自动识别日期/时间/体重/备注）</label>
-      <textarea id="import-text" placeholder="2024-01-15 08:30 70.5
+      <h2 class="toggle-header collapsed" onclick="toggleImport(this)">
+        <span class="arrow">▼</span>
+        <span>导入历史记录（体重）</span>
+      </h2>
+      <div class="toggle-content collapsed">
+        <label>粘贴文本（每行一条记录，自动识别日期/时间/体重/备注）</label>
+        <textarea id="import-text" placeholder="2024-01-15 08:30 70.5
 2024-01-16 08:35 70.2 （晚）
 2024/01/17,08:40,69.8 早起空腹
 2024-01-18 69.5
 12/6/2023 8:00 52.6 （晚）"></textarea>
-      <div class="hint">
-        支持格式：<br>
-        &nbsp;• <code>2024-01-15 08:30 70.5</code><br>
-        &nbsp;• <code>2024-01-15 08:30 70.5 （晚）</code> ← 体重后空格+内容自动识别为备注<br>
-        &nbsp;• <code>2024-01-15,08:30,70.5</code>（逗号分隔）<br>
-        &nbsp;• <code>2024/01/15 70.5</code>（无时间，默认 00:00）<br>
-        &nbsp;• <code>10/26/2021 08:30 70.5</code>（月/日/年）<br>
-        &nbsp;• 以 # 开头的行会被当作注释忽略
+        <div class="hint">
+          支持格式：<br>
+          &nbsp;• <code>2024-01-15 08:30 70.5</code><br>
+          &nbsp;• <code>2024-01-15 08:30 70.5 （晚）</code> ← 体重后空格+内容自动识别为备注<br>
+          &nbsp;• <code>2024-01-15,08:30,70.5</code>（逗号分隔）<br>
+          &nbsp;• <code>2024/01/15 70.5</code>（无时间，默认 00:00）<br>
+          &nbsp;• <code>10/26/2021 08:30 70.5</code>（月/日/年）<br>
+          &nbsp;• 以 # 开头的行会被当作注释忽略
+        </div>
+        <div class="btn-row">
+          <button onclick="importText()">📥 导入体重记录</button>
+          <button class="secondary" onclick="loadSample()">📋 示例数据</button>
+          <button class="danger" onclick="clearAllRecords()">🗑️ 清空体重数据</button>
+        </div>
+        <div id="import-msg" class="msg"></div>
       </div>
-      <div class="btn-row">
-        <button onclick="importText()">📥 导入体重记录</button>
-        <button class="secondary" onclick="loadSample()">📋 示例数据</button>
-        <button class="danger" onclick="clearAllRecords()">🗑️ 清空体重数据</button>
-      </div>
-      <div id="import-msg" class="msg"></div>
     </div>
   </div>
 
@@ -568,31 +585,36 @@
       <div id="menses-msg" class="msg"></div>
     </div>
 
-    <!-- 8. 导入月经历史记录 -->
+    <!-- 8. 导入历史记录（月经） -->
     <div class="card">
-      <h2>导入月经历史记录</h2>
-      <label>粘贴文本（每行一条记录，自动识别日期/备注）</label>
-      <textarea id="import-menses-text" placeholder="2024-01-15 第一天
+      <h2 class="toggle-header collapsed" onclick="toggleImport(this)">
+        <span class="arrow">▼</span>
+        <span>导入历史记录（月经）</span>
+      </h2>
+      <div class="toggle-content collapsed">
+        <label>粘贴文本（每行一条记录，自动识别日期/备注）</label>
+        <textarea id="import-menses-text" placeholder="2024-01-15 第一天
 2024-02-10
 2024/03/15,第二天
 12/6/2023 痛经"></textarea>
-      <div class="hint">
-        支持格式：<br>
-        &nbsp;• <code>2024-01-15 第一天</code> ← 日期后空格+内容自动识别为备注<br>
-        &nbsp;• <code>2024-01-15</code>（仅日期，备注为空）<br>
-        &nbsp;• <code>2024/01/15,第一天</code>（逗号分隔）<br>
-        &nbsp;• <code>10/26/2021 痛经</code>（月/日/年）<br>
-        &nbsp;• 以 # 开头的行会被当作注释忽略
+        <div class="hint">
+          支持格式：<br>
+          &nbsp;• <code>2024-01-15 第一天</code> ← 日期后空格+内容自动识别为备注<br>
+          &nbsp;• <code>2024-01-15</code>（仅日期，备注为空）<br>
+          &nbsp;• <code>2024/01/15,第一天</code>（逗号分隔）<br>
+          &nbsp;• <code>10/26/2021 痛经</code>（月/日/年）<br>
+          &nbsp;• 以 # 开头的行会被当作注释忽略
+        </div>
+        <div class="btn-row">
+          <button onclick="importMensesText()">📥 导入月经记录</button>
+          <button class="danger" onclick="clearAllMenses()">🗑️ 清空月经记录</button>
+        </div>
+        <div id="import-menses-msg" class="msg"></div>
       </div>
-      <div class="btn-row">
-        <button onclick="importMensesText()">📥 导入月经记录</button>
-        <button class="danger" onclick="clearAllMenses()">🗑️ 清空月经记录</button>
-      </div>
-      <div id="import-menses-msg" class="msg"></div>
     </div>
   </div>
 
-  <div class="footer">🌸 睿动智能体云平台 · 体重记录（数据保存在你的浏览器本地）</div>
+  <div class="footer">🌸 睿动智能体云平台 · 个人信息记录（数据保存在你的浏览器本地）</div>
 </div>
 
 <!-- 邮件备份弹窗 -->
@@ -793,34 +815,48 @@ function sendEmailBackup() {
   }
 
   const store = loadStore();
-  if (!store.records.length) {
-    showMsg('email-msg', '暂无体重记录可发送', false);
+  if (!store.records.length && !store.menses.length) {
+    showMsg('email-msg', '暂无记录可发送', false);
     return;
   }
 
   // 生成邮件内容
   const profile = store.profile;
   const lines = [];
-  lines.push('🌸 每日体重记录备份');
+  lines.push('🌸 每日个人信息记录备份');
   lines.push('');
   if (profile.name) lines.push(`姓名：${profile.name}`);
   if (profile.gender) lines.push(`性别：${profile.gender === 'female' ? '女' : profile.gender === 'male' ? '男' : '其他'}`);
   if (profile.birthday) lines.push(`生日：${profile.birthday}`);
   if (profile.height) lines.push(`身高：${profile.height} cm`);
   lines.push('');
-  lines.push('📊 体重记录：');
-  lines.push('');
 
-  const sorted = sortedRecords(store.records);
-  sorted.forEach((r, idx) => {
-    lines.push(`${idx + 1}. ${r.date} ${r.time} — ${r.weight} kg`);
-  });
+  // 体重记录
+  if (store.records.length) {
+    lines.push('📊 体重记录：');
+    lines.push('');
+    const sorted = sortedRecords(store.records);
+    sorted.forEach((r, idx) => {
+      lines.push(`${idx + 1}. ${r.date} ${r.time} — ${r.weight} kg${r.note ? ' ' + r.note : ''}`);
+    });
+    lines.push('');
+  }
 
-  lines.push('');
+  // 月经记录
+  if (store.menses.length) {
+    lines.push('🌸 月经记录：');
+    lines.push('');
+    const sortedM = sortedMenses(store.menses);
+    sortedM.forEach((m, idx) => {
+      lines.push(`${idx + 1}. ${m.date} ${m.time}${m.note ? ' — ' + m.note : ''}`);
+    });
+    lines.push('');
+  }
+
   lines.push('—');
-  lines.push('睿动智能体云平台 · 体重记录');
+  lines.push('睿动智能体云平台 · 个人信息记录');
 
-  const subject = encodeURIComponent('🌸 每日体重记录备份');
+  const subject = encodeURIComponent('🌸 每日个人信息记录备份');
   const body = encodeURIComponent(lines.join('\n'));
 
   // iOS 邮件客户端唤起：必须使用隐藏的 iframe 方式
@@ -879,6 +915,7 @@ function refreshAll() {
   renderProfileSummary(store.profile, age, latestWeight);
   renderBMIBar(bmi);
   renderMensesStats();
+  updateMensesTabState();
   allPoints = records.map(r => ({ ...r, datetime: r.date + ' ' + r.time }));
   renderTrendByPeriod();
   renderTable();
@@ -1038,6 +1075,7 @@ function saveProfile() {
   saveStore(store);
   showMsg('profile-msg', '档案已保存', true);
   refreshAll();
+  updateMensesTabState();
   setTimeout(() => closeProfileModal(), 800);
 }
 
@@ -1052,6 +1090,7 @@ function resetProfile() {
   document.getElementById('p-height').value = '';
   showMsg('profile-msg', '档案已清空', true);
   refreshAll();
+  updateMensesTabState();
   setTimeout(() => closeProfileModal(), 800);
 }
 
@@ -1240,13 +1279,15 @@ function exportData() {
   const isQQBrowser = /QQBrowser|QQ/.test(navigator.userAgent);
 
   if (isIOS || isQQBrowser) {
-    // iOS/QQ浏览器：使用新窗口 + data URI 方式
+    // iOS/QQ浏览器：使用隐藏的 iframe 方式，避免跳转空白页
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-    const newWindow = window.open(dataUri, '_blank');
-    if (!newWindow) {
-      // 如果被拦截，尝试直接跳转
-      window.location.href = dataUri;
-    }
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = dataUri;
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }, 3000);
     return;
   }
 
@@ -1321,6 +1362,29 @@ function importDataFile(event) {
   reader.readAsText(file, 'utf-8');
 }
 
+// ========== 初始化：清空所有数据 ==========
+function initAllData() {
+  const store = loadStore();
+  const recordCount = (store.records || []).length;
+  const mensesCount = (store.menses || []).length;
+  const hasProfile = store.profile && (store.profile.name || store.profile.height || store.profile.birthday);
+
+  let msg = '⚠️ 确定要初始化所有数据吗？\n\n此操作将清空以下内容：\n';
+  if (hasProfile) msg += '  • 个人信息\n';
+  if (recordCount > 0) msg += `  • 体重记录（${recordCount} 条）\n`;
+  if (mensesCount > 0) msg += `  • 月经记录（${mensesCount} 条）\n`;
+  msg += '\n此操作不可恢复！';
+
+  if (!confirm(msg)) return;
+
+  // 二次确认
+  if (!confirm('再次确认：确定要删除所有数据吗？')) return;
+
+  localStorage.removeItem(STORAGE_KEY);
+  alert('✅ 已初始化，所有数据已清空');
+  location.reload();
+}
+
 // ========== 趋势图：时段切换 ==========
 function changePeriod(btn, period) {
   document.querySelectorAll('#period-tabs button').forEach(b => b.classList.remove('active'));
@@ -1387,7 +1451,7 @@ function renderChart(records, period) {
   if (!records.length) {
     canvas.style.display = 'none';
     emptyEl.style.display = 'flex';
-    emptyEl.textContent = '暂无数据，添加或导入记录后会自动绘图';
+    emptyEl.textContent = '暂无数据，添加记录后会自动绘图';
     if (chart) { chart.destroy(); chart = null; }
     return;
   }
@@ -1882,6 +1946,15 @@ function switchMainTab(tab) {
   const weightSection = document.getElementById('section-weight');
   const mensesSection = document.getElementById('section-menses');
 
+  // 检查性别是否为女性
+  const store = loadStore();
+  const isFemale = store.profile && store.profile.gender === 'female';
+
+  if (tab === 'menses' && !isFemale) {
+    alert('请先在个人信息中设置性别为女性，以使用月经管理功能');
+    return;
+  }
+
   if (tab === 'weight') {
     weightBtn.classList.add('active');
     weightBtn.style.background = '#ff5285';
@@ -1903,6 +1976,32 @@ function switchMainTab(tab) {
     // 切换到月经Tab时重新渲染图表（确保canvas尺寸正确）
     renderMensesTrend();
   }
+}
+
+function updateMensesTabState() {
+  const store = loadStore();
+  const isFemale = store.profile && store.profile.gender === 'female';
+  const mensesBtn = document.getElementById('tab-menses');
+  if (!mensesBtn) return;
+
+  if (isFemale) {
+    mensesBtn.style.opacity = '1';
+    mensesBtn.style.cursor = 'pointer';
+    mensesBtn.style.filter = 'none';
+    mensesBtn.title = '';
+  } else {
+    mensesBtn.style.opacity = '0.5';
+    mensesBtn.style.cursor = 'not-allowed';
+    mensesBtn.style.filter = 'grayscale(0.6)';
+    mensesBtn.title = '请设置性别为女性以使用此功能';
+  }
+}
+
+// ========== 展开/收起 ==========
+function toggleImport(header) {
+  const content = header.nextElementSibling;
+  header.classList.toggle('collapsed');
+  content.classList.toggle('collapsed');
 }
 
 // ========== 启动 ==========
