@@ -11,6 +11,10 @@
     margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: linear-gradient(135deg, #ffd1dc 0%, #ffafc5 40%, #ff8fa3 100%);
     min-height: 100vh; color: #333;
+    transition: background .5s ease;
+  }
+  body.male-theme {
+    background: linear-gradient(135deg, #b3e5fc 0%, #81d4fa 40%, #4fc3f7 100%);
   }
   .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
 
@@ -76,9 +80,10 @@
     .tab-row button { padding: 4px 6px; font-size: 11px; }
     .grid { grid-template-columns: 1fr; }
   }
-  .header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
+  .header { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; margin-bottom: 12px; }
   h1 { color: #fff; text-align: center; margin: 0; letter-spacing: 2px; font-size: 24px;
        text-shadow: 0 2px 8px rgba(193,53,132,0.3); }
+  .header-sub { color: #c2185b; font-size: 10px; margin-top: 4px; font-weight: 500; }
   .profile-icon-btn {
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     width: 44px; height: 44px; border-radius: 50%; background: #fff;
@@ -330,6 +335,7 @@
 <div class="container">
   <div class="header">
     <h1>🌸 每日个人信息记录<span class="local-tag">本地版</span></h1>
+    <div class="header-sub">数据保存在你的浏览器本地</div>
     <button class="profile-icon-btn" onclick="openProfileModal()" title="编辑个人信息">👤</button>
   </div>
 
@@ -995,6 +1001,13 @@ function renderMensesStats() {
   const todayEl = document.getElementById('m-today');
   const daysSinceEl = document.getElementById('m-days-since');
   const avgDaysEl = document.getElementById('m-avg-days');
+
+  // 男性用户不显示月经关键信息
+  const isFemale = store.profile && store.profile.gender === 'female';
+  if (!isFemale) {
+    area.style.display = 'none';
+    return;
+  }
 
   const menses = store.menses || [];
   if (!menses.length) {
@@ -1962,7 +1975,6 @@ function switchMainTab(tab) {
   const isFemale = store.profile && store.profile.gender === 'female';
 
   if (tab === 'menses' && !isFemale) {
-    alert('请先在个人信息中设置性别为女性，以使用月经管理功能');
     return;
   }
 
@@ -1996,15 +2008,17 @@ function updateMensesTabState() {
   if (!mensesBtn) return;
 
   if (isFemale) {
-    mensesBtn.style.opacity = '1';
-    mensesBtn.style.cursor = 'pointer';
-    mensesBtn.style.filter = 'none';
-    mensesBtn.title = '';
+    mensesBtn.style.display = '';
   } else {
-    mensesBtn.style.opacity = '0.5';
-    mensesBtn.style.cursor = 'not-allowed';
-    mensesBtn.style.filter = 'grayscale(0.6)';
-    mensesBtn.title = '请设置性别为女性以使用此功能';
+    mensesBtn.style.display = 'none';
+  }
+
+  // 更新主题色
+  const body = document.body;
+  if (store.profile && store.profile.gender === 'male') {
+    body.classList.add('male-theme');
+  } else {
+    body.classList.remove('male-theme');
   }
 }
 
