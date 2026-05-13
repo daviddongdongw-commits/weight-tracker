@@ -106,8 +106,8 @@
   .card h2.toggle-header {
     padding-left: 10px;
   }
-  .card h2 .tools { display: flex; gap: 6px; }
-  .card h2 .tools button { font-size: 12px; padding: 4px 10px; width: auto; }
+  .card h2 .tools { display: flex; gap: 4px; flex-wrap: nowrap; }
+  .card h2 .tools button { font-size: 11px; padding: 3px 8px; width: auto; white-space: nowrap; }
 
   /* 可展开/收起区域 */
   .toggle-header { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
@@ -138,9 +138,22 @@
   .stat {
     background: linear-gradient(135deg, #fff5f8, #ffe3ed);
     padding: 12px; border-radius: 10px; text-align: center;
+    position: relative; cursor: default;
   }
   .stat .label { font-size: 11px; color: #8b3d5f; }
   .stat .value { font-size: 16px; font-weight: 700; color: #c2185b; margin-top: 4px; }
+  .stat .stat-tooltip {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: #c2185b; color: #fff; padding: 6px 10px; border-radius: 6px;
+    font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity .2s; margin-bottom: 6px; z-index: 10;
+    box-shadow: 0 2px 8px rgba(193,24,91,0.3);
+  }
+  .stat .stat-tooltip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: #c2185b;
+  }
+  .stat:hover .stat-tooltip { opacity: 1; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 7px 8px; border-bottom: 1px solid #fce4ec; text-align: left; vertical-align: middle; }
   th { background: #fff5f8; color: #8b3d5f; font-weight: 600; }
@@ -285,8 +298,8 @@
     margin-top: 6px; padding: 0 2px;
   }
   .bmi-legend {
-    display: flex; justify-content: space-around; flex-wrap: wrap;
-    gap: 8px; margin-top: 10px; font-size: 11px;
+    display: flex; justify-content: space-around; flex-wrap: nowrap;
+    gap: 6px; margin-top: 10px; font-size: 10px;
   }
   .bmi-legend-item { display: flex; align-items: center; gap: 4px; color: #6d4357; }
   .bmi-legend-dot {
@@ -451,8 +464,8 @@
     <div class="card">
       <h2>体重记录列表</h2>
       <div class="tab-row">
-        <button class="active" data-order="desc" onclick="toggleOrder(this, 'desc')">按时间倒序</button>
-        <button data-order="asc" onclick="toggleOrder(this, 'asc')">按时间正序</button>
+        <button class="active" id="btn-time-order" data-order="desc" onclick="toggleOrder(this)">按时间排序 ↓</button>
+        <button data-worder="desc" onclick="toggleWeightOrder(this)">按体重排序 ↓</button>
       </div>
       <table id="records-table">
         <thead>
@@ -897,6 +910,7 @@ let listOrder = 'desc';
 let currentPeriod = 'week';  // 默认按周
 let recordsPage = 0;
 const RECORDS_PER_PAGE = 10;
+let weightOrder = null;  // null | 'desc' | 'asc'
 
 // 月经记录状态
 let mensesOrder = 'desc';
@@ -1445,6 +1459,10 @@ function renderTrendByPeriod() {
     stats.first = ws[0];
     stats.change = Math.round((stats.latest - stats.first) * 100) / 100;
     stats.average = Math.round(ws.reduce((a,b)=>a+b,0) / ws.length * 100) / 100;
+    // 记录对应日期（找到对应体重值的记录，取第一条匹配的）
+    stats.latestDate = filtered[filtered.length - 1].date;
+    stats.minDate = filtered.find(r => r.weight === stats.min)?.date || '';
+    stats.maxDate = filtered.find(r => r.weight === stats.max)?.date || '';
   }
   renderTrendStats(stats, currentPeriod);
   renderChart(filtered, currentPeriod);
@@ -1461,9 +1479,9 @@ function renderTrendStats(s, period) {
   const color = s.change > 0 ? '#e57373' : s.change < 0 ? '#66bb6a' : '#8b3d5f';
   wrap.innerHTML = `
     <div class="stat"><div class="label">${periodTxt}记录</div><div class="value">${s.count}</div></div>
-    <div class="stat"><div class="label">最新</div><div class="value">${s.latest} kg</div></div>
-    <div class="stat"><div class="label">最低</div><div class="value">${s.min} kg</div></div>
-    <div class="stat"><div class="label">最高</div><div class="value">${s.max} kg</div></div>
+    <div class="stat"><div class="label">最新</div><div class="value">${s.latest} kg</div><div class="stat-tooltip">日期: ${s.latestDate || '无'}</div></div>
+    <div class="stat"><div class="label">最低</div><div class="value">${s.min} kg</div><div class="stat-tooltip">日期: ${s.minDate || '无'}</div></div>
+    <div class="stat"><div class="label">最高</div><div class="value">${s.max} kg</div><div class="stat-tooltip">日期: ${s.maxDate || '无'}</div></div>
     <div class="stat"><div class="label">平均</div><div class="value">${s.average} kg</div></div>
     <div class="stat"><div class="label">期内变化</div><div class="value" style="color:${color}">${arrow} ${Math.abs(s.change)} kg</div></div>
   `;
@@ -1490,11 +1508,13 @@ function renderChart(records, period) {
   }
 
   const ctx = canvas.getContext('2d');
-  // 根据时段调整 X 轴标签密度
+  // 根据时段调整 X 轴标签
   const labels = records.map(r => {
-    if (period === 'year' || period === 'halfyear') return r.date;
-    if (period === 'month') return r.date.slice(5);  // MM-DD
-    return r.date.slice(5) + ' ' + r.time;           // 周/全部
+    if (period === 'week') return r.date.slice(5);    // 周：只显示 MM-DD
+    if (period === 'month') return r.date.slice(5);   // 月：只显示 MM-DD
+    if (period === 'year' || period === 'halfyear') return r.date;  // 半年/年：显示完整日期
+    if (period === 'all') return r.date;              // 全部：只显示年月日
+    return r.date.slice(5) + ' ' + r.time;
   });
   const data = records.map(r => r.weight);
   if (chart) chart.destroy();
@@ -1550,11 +1570,39 @@ function renderChart(records, period) {
 }
 
 // ========== 记录表 ==========
-function toggleOrder(btn, order) {
-  // 兼容两个 tab-row
+function toggleOrder(btn) {
+  // 循环切换: desc -> asc -> desc
+  if (listOrder === 'desc') {
+    listOrder = 'asc';
+    btn.textContent = '按时间排序 ↑';
+    btn.setAttribute('data-order', 'asc');
+  } else {
+    listOrder = 'desc';
+    btn.textContent = '按时间排序 ↓';
+    btn.setAttribute('data-order', 'desc');
+  }
+  weightOrder = null; // 取消体重排序
+  // 高亮当前按钮
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  listOrder = order;
+  // 重置体重排序按钮文字
+  const wBtn = document.querySelector('[data-worder]');
+  if (wBtn) { wBtn.textContent = '按体重排序 ↓'; wBtn.classList.remove('active'); }
+  renderTable();
+}
+
+function toggleWeightOrder(btn) {
+  // 循环: desc -> asc -> desc
+  if (weightOrder === 'desc') {
+    weightOrder = 'asc';
+    btn.textContent = '按体重排序 ↑';
+  } else {
+    weightOrder = 'desc';
+    btn.textContent = '按体重排序 ↓';
+  }
+  // 高亮当前按钮，取消时间排序高亮
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
   renderTable();
 }
 
@@ -1570,7 +1618,12 @@ function renderTable() {
     pageBar.style.display = 'none';
     return;
   }
-  const arr = listOrder === 'asc' ? allPoints : [...allPoints].reverse();
+  let arr;
+  if (weightOrder) {
+    arr = [...allPoints].sort((a, b) => weightOrder === 'desc' ? b.weight - a.weight : a.weight - b.weight);
+  } else {
+    arr = listOrder === 'asc' ? allPoints : [...allPoints].reverse();
+  }
   const total = arr.length;
 
   const renderRow = (p) => `
