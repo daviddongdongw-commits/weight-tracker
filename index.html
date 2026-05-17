@@ -1562,8 +1562,8 @@ function renderTrendByPeriod() {
     stats.max = Math.round(Math.max(...ws) * 100) / 100;
     stats.latest = ws[ws.length - 1];
     stats.first = ws[0];
-    stats.change = Math.round((stats.latest - stats.first) * 100) / 100;
     stats.average = Math.round(ws.reduce((a,b)=>a+b,0) / ws.length * 100) / 100;
+    stats.change = Math.round((stats.latest - stats.average) * 100) / 100;
     // 记录对应日期（找到对应体重值的记录，取第一条匹配的）
     stats.latestDate = filtered[filtered.length - 1].date;
     stats.minDate = filtered.find(r => r.weight === stats.min)?.date || '';
