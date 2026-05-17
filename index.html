@@ -695,6 +695,42 @@
   </div>
 </div>
 
+<!-- 体重记录编辑弹窗 -->
+<div class="modal-overlay" id="record-edit-modal" onclick="closeRecordEditModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>编辑体重记录</h3>
+      <button class="modal-close" onclick="closeRecordEditModal()">&times;</button>
+    </div>
+    <div class="grid">
+      <div>
+        <label>日期</label>
+        <input id="e-date" type="date" />
+      </div>
+      <div>
+        <label>时间</label>
+        <input id="e-time" type="time" />
+      </div>
+      <div>
+        <label>体重 (kg)</label>
+        <input id="e-weight" type="number" step="0.1" placeholder="例如：55.5" />
+      </div>
+      <div>
+        <label>备注</label>
+        <input id="e-note" placeholder="可选" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button onclick="saveRecordEdit()">💾 保存修改</button>
+      <button class="secondary" onclick="closeRecordEditModal()">❌ 取消</button>
+    </div>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #f3c1d4; text-align:center;">
+      <button class="danger" onclick="deleteEditingRecord()">🗑️ 删除此记录</button>
+    </div>
+    <div id="record-edit-msg" class="msg"></div>
+  </div>
+</div>
+
 <script>
 // ========== 本地存储层 ==========
 const STORAGE_KEY = 'weight_tracker_v1';
@@ -1176,6 +1212,75 @@ function deleteRecord(id) {
   refreshAll();
 }
 
+let editingRecordId = null;
+
+function editRecord(id) {
+  const store = loadStore();
+  const rec = store.records.find(r => r.id === id);
+  if (!rec) { alert('记录不存在'); return; }
+  editingRecordId = id;
+  document.getElementById('e-date').value = rec.date;
+  document.getElementById('e-time').value = rec.time;
+  document.getElementById('e-weight').value = rec.weight;
+  document.getElementById('e-note').value = rec.note || '';
+  document.getElementById('record-edit-msg').className = 'msg';
+  document.getElementById('record-edit-modal').classList.add('show');
+}
+
+function closeRecordEditModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('record-edit-modal').classList.remove('show');
+  editingRecordId = null;
+}
+
+function saveRecordEdit() {
+  if (!editingRecordId) return;
+  const dateVal = document.getElementById('e-date').value;
+  const timeVal = document.getElementById('e-time').value || '00:00';
+  const weightRaw = document.getElementById('e-weight').value;
+  const noteVal = document.getElementById('e-note').value.trim();
+
+  if (!dateVal) {
+    showMsg('record-edit-msg', '日期必填', false);
+    return;
+  }
+  const w = parseFloat(weightRaw);
+  if (!weightRaw || isNaN(w) || w <= 0 || w > 500) {
+    showMsg('record-edit-msg', '体重必须为合理的数字（kg）', false);
+    return;
+  }
+
+  const store = loadStore();
+  const rec = store.records.find(r => r.id === editingRecordId);
+  if (!rec) {
+    showMsg('record-edit-msg', '记录不存在', false);
+    return;
+  }
+  rec.date = dateVal;
+  rec.time = timeVal;
+  rec.weight = w;
+  rec.note = noteVal;
+  saveStore(store);
+  showMsg('record-edit-msg', '修改已保存', true);
+  refreshAll();
+  setTimeout(() => closeRecordEditModal(), 600);
+}
+
+function deleteEditingRecord() {
+  if (!editingRecordId) return;
+  if (!confirm('确认删除该记录？')) return;
+  const store = loadStore();
+  const before = store.records.length;
+  store.records = store.records.filter(r => r.id !== editingRecordId);
+  if (store.records.length === before) {
+    showMsg('record-edit-msg', '记录不存在', false);
+    return;
+  }
+  saveStore(store);
+  closeRecordEditModal();
+  refreshAll();
+}
+
 // ========== 文本导入 ==========
 function importText() {
   const text = document.getElementById('import-text').value;
@@ -1632,7 +1737,7 @@ function renderTable() {
       <td>${p.time}</td>
       <td><strong>${p.weight}</strong></td>
       <td>${p.note || ''}</td>
-      <td class="actions-cell"><button class="danger" onclick="deleteRecord(${p.id})">删除</button></td>
+      <td class="actions-cell"><button onclick="editRecord(${p.id})">编辑</button></td>
     </tr>
   `;
 
